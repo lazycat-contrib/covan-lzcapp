@@ -64,11 +64,11 @@ services:
     command: bun /lzcapp/pkg/content/secrets-check/validate-secrets.mjs
     environment:
       - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
-      - {{ printf "JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - JWT_SECRET={{ .U.jwt_secret }}
       - POSTGRES_PASSWORD={{ stable_secret "postgres_password" }}
       - SECRET_KEY_BASE={{ stable_secret "realtime_secret_key_base" }}
-      - {{ printf "ANON_KEY=%s" .U.anon_key | quote }}
-      - {{ printf "SERVICE_ROLE_KEY=%s" .U.service_role_key | quote }}
+      - ANON_KEY={{ .U.anon_key }}
+      - SERVICE_ROLE_KEY={{ .U.service_role_key }}
       - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
   db:
     # upstream: docker.io/supabase/postgres:17.6.1.136
@@ -95,7 +95,7 @@ services:
       - PGPASSWORD={{ stable_secret "postgres_password" }}
       - PGDATABASE=postgres
       - POSTGRES_DB=postgres
-      - {{ printf "JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - JWT_SECRET={{ .U.jwt_secret }}
       - JWT_EXP=3600
     binds:
       - /lzcapp/var/covan/postgres-data:/var/lib/postgresql/data
@@ -131,7 +131,7 @@ services:
       - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
       - GOTRUE_JWT_EXP=3600
-      - {{ printf "GOTRUE_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - GOTRUE_JWT_SECRET={{ .U.jwt_secret }}
       - GOTRUE_JWT_ISSUER=https://{{ .S.AppDomain }}/supabase/auth/v1
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
       - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
@@ -161,9 +161,9 @@ services:
       - PGRST_DB_ANON_ROLE=anon
       - PGRST_ADMIN_SERVER_PORT=3001
       - PGRST_ADMIN_SERVER_HOST=localhost
-      - {{ printf "PGRST_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - PGRST_JWT_SECRET={{ .U.jwt_secret }}
       - PGRST_DB_USE_LEGACY_GUCS=false
-      - {{ printf "PGRST_APP_SETTINGS_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - PGRST_APP_SETTINGS_JWT_SECRET={{ .U.jwt_secret }}
       - PGRST_APP_SETTINGS_JWT_EXP=3600
 
   realtime-dev:
@@ -188,9 +188,9 @@ services:
       - DB_NAME=postgres
       - DB_AFTER_CONNECT_QUERY=SET search_path TO _realtime
       - DB_ENC_KEY={{ stable_secret "realtime_db_enc_key" }}
-      - {{ printf "API_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - API_JWT_SECRET={{ .U.jwt_secret }}
       - SECRET_KEY_BASE={{ stable_secret "realtime_secret_key_base" }}
-      - {{ printf "METRICS_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - METRICS_JWT_SECRET={{ .U.jwt_secret }}
       - ERL_AFLAGS=-proto_dist inet_tcp
       - DNS_NODES=''
       - RLIMIT_NOFILE=10000
@@ -224,8 +224,8 @@ services:
       - KONG_PLUGINS=request-transformer,cors,key-auth,acl,request-termination
       - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
       - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
-      - {{ printf "SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
-      - {{ printf "SUPABASE_SERVICE_KEY=%s" .U.service_role_key | quote }}
+      - SUPABASE_ANON_KEY={{ .U.anon_key }}
+      - SUPABASE_SERVICE_KEY={{ .U.service_role_key }}
       - SUPABASE_PUBLISHABLE_KEY=
       - SUPABASE_SECRET_KEY=
       - ANON_KEY_ASYMMETRIC=
@@ -270,15 +270,15 @@ services:
       start_period: 10s
     environment:
       - SUPABASE_URL=http://kong:8000
-      - {{ printf "SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
-      - {{ printf "SUPABASE_SERVICE_ROLE_KEY=%s" .U.service_role_key | quote }}
-      - {{ printf "OPENAI_API_KEY=%s" .U.openai_api_key | quote }}
-      - {{ printf "OPENAI_BASE_URL=%s" .U.openai_base_url | quote }}
-      - {{ printf "OPENAI_MODEL=%s" .U.openai_model | quote }}
+      - SUPABASE_ANON_KEY={{ .U.anon_key }}
+      - SUPABASE_SERVICE_ROLE_KEY={{ .U.service_role_key }}
+      - OPENAI_API_KEY={{ .U.openai_api_key }}
+      - OPENAI_BASE_URL={{ .U.openai_base_url }}
+      - OPENAI_MODEL={{ .U.openai_model }}
       - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
       - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
       - DOCS_DIR=/data/docs
-      - {{ printf "SUPABASE_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - SUPABASE_JWT_SECRET={{ .U.jwt_secret }}
       - PORT=8787
       - ROUTINE_TICK_MS=60000
     binds:
@@ -305,7 +305,7 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - VITE_SUPABASE_URL=https://{{ .S.AppDomain }}/supabase
-      - {{ printf "VITE_SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
+      - VITE_SUPABASE_ANON_KEY={{ .U.anon_key }}
       - VITE_API_URL=https://{{ .S.AppDomain }}/api
       - VITE_TERMS_URL=
       - VITE_PRIVACY_URL=
