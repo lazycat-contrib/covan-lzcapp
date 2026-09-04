@@ -60,7 +60,7 @@ application:
 services:
   secrets-check:
     # upstream: ghcr.io/covan-ai/covan-api:0.1.0
-    image: ghcr.1ms.run/covan-ai/covan-api@sha256:571e83bafa28b54f09c17e2fd388f1322f7df514ee4812d016f1f1f73287e68e
+    image: ghcr.1ms.run/covan-ai/covan-api:0.1.0
     command: bun /lzcapp/pkg/content/secrets-check/validate-secrets.mjs
     environment:
       - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
@@ -72,7 +72,7 @@ services:
       - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
   db:
     # upstream: docker.io/supabase/postgres:17.6.1.136
-    image: dockerproxy.net/supabase/postgres@sha256:5a4314708484bec672de2c09653a5c01fb1c84a998564ac231b0325e2238ed5b
+    image: dockerproxy.net/supabase/postgres:17.6.1.136
     depends_on:
       - secrets-check
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -c log_min_messages=fatal
@@ -104,7 +104,7 @@ services:
 
   auth:
     # upstream: docker.io/supabase/gotrue:v2.189.0
-    image: docker.1ms.run/supabase/gotrue@sha256:0a8557cbe0fd53a067726fe656f79eb1b03a1ab3cdde4b59907ce5a1e1a202ab
+    image: docker.1ms.run/supabase/gotrue:v2.189.0
     depends_on:
       - db
     healthcheck:
@@ -141,7 +141,7 @@ services:
 
   rest:
     # upstream: docker.io/postgrest/postgrest:v14.12
-    image: docker.1ms.run/postgrest/postgrest@sha256:560895fc1f6cb78f36ae64682c85bfc923c73da2d3a473ae2f55755fd7991ad1
+    image: docker.1ms.run/postgrest/postgrest:v14.12
     depends_on:
       - db
     command: postgrest
@@ -168,7 +168,7 @@ services:
 
   realtime-dev:
     # upstream: docker.io/supabase/realtime:v2.102.3
-    image: docker.1ms.run/supabase/realtime@sha256:2cc87edf0db5cebf1f58c9a4116bb80a25ff764c8706b6802fa68d976e66e5d7
+    image: docker.1ms.run/supabase/realtime:v2.102.3
     depends_on:
       - db
     healthcheck:
@@ -201,7 +201,7 @@ services:
 
   kong:
     # upstream: docker.io/kong/kong:3.9.3
-    image: docker.1ms.run/kong/kong@sha256:61591af560fc9ba4d1e2fcc8be87f28e374c4b2f4a8f0e637702ee12dcaddade
+    image: docker.1ms.run/kong/kong:3.9.3
     depends_on:
       - auth
       - rest
@@ -235,7 +235,7 @@ services:
 
   migrate:
     # upstream: docker.io/library/postgres:17.6-alpine
-    image: docker.1ms.run/library/postgres@sha256:747d5ed1fdeeb124b880fbe3d7c6557d2c4064ae41d6b6297d417882effce4be
+    image: docker.1ms.run/library/postgres:17.6-alpine
     depends_on:
       - db
       - auth
@@ -251,7 +251,7 @@ services:
 
   covan-api:
     # upstream: ghcr.io/covan-ai/covan-api:0.1.0
-    image: ghcr.1ms.run/covan-ai/covan-api@sha256:571e83bafa28b54f09c17e2fd388f1322f7df514ee4812d016f1f1f73287e68e
+    image: ghcr.1ms.run/covan-ai/covan-api:0.1.0
     run_as: 1000
     depends_on:
       - migrate
@@ -286,7 +286,7 @@ services:
 
   covan-web:
     # upstream: ghcr.io/covan-ai/covan-web:0.1.0
-    image: ghcr.1ms.run/covan-ai/covan-web@sha256:082705ec01022e3da3b3d0f089e343bed4b5cda167771bd020b7c04a360205f3
+    image: ghcr.1ms.run/covan-ai/covan-web:0.1.0
     depends_on:
       - covan-api
     healthcheck:
