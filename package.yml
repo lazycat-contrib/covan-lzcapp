@@ -1,0 +1,18 @@
+package: community.lazycat.app.covan
+version: 0.1.0
+name: Covan
+description: A shared AI agent for your team. Everyone trains it together; everyone talks to it privately. Self-hostable, AGPL-3.0.
+min_os_version: 1.6.0
+homepage: https://github.com/covan-ai/covan
+author: covan-ai
+license: AGPL-3.0-only
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Covan
+    description: 团队共享的 AI 智能体；所有人共同训练，每个人都能与它私密交流，可自托管
+  en:
+    name: Covan
+    description: A shared AI agent for your team. Everyone trains it together; everyone talks to it privately. Self-hostable, AGPL-3.0.

@@ -1,0 +1,317 @@
+application:
+  subdomain: covan
+  multi_instance: false
+  upstreams:
+    - location: /supabase/
+      backend: http://kong:8000/
+      fix_websocket_header: true
+    - location: /api/
+      backend: http://covan-api:8787/
+    - location: /
+      backend: http://covan-web:3000/
+  public_path:
+    - /
+  injects:
+    - id: capture-covan-credentials
+      on: request
+      auth_required: false
+      when:
+        - /supabase/auth/v1/signup
+        - /supabase/auth/v1/token
+      do: |
+        const payload = ctx.body.getJSON();
+        if (payload && payload.email && payload.password) {
+          ctx.flow.set("covan_pending_email", payload.email);
+          ctx.flow.set("covan_pending_password", payload.password);
+        }
+    - id: persist-covan-credentials
+      on: response
+      auth_required: false
+      when:
+        - /supabase/auth/v1/signup
+        - /supabase/auth/v1/token
+      do: |
+        if (ctx.status >= 200 && ctx.status < 300) {
+          const email = ctx.flow.get("covan_pending_email");
+          const password = ctx.flow.get("covan_pending_password");
+          if (email && password) {
+            ctx.persist.set("covan_email", email);
+            ctx.persist.set("covan_password", password);
+          }
+        }
+    - id: autofill-covan-login
+      on: browser
+      when:
+        - /sign-in
+      do:
+        - src: builtin://simple-inject-password
+          params:
+            user:
+              $persist: covan_email
+            password:
+              $persist: covan_password
+    - id: open-save-chooser
+      on: browser
+      when:
+        - /*
+      do:
+        - src: file:///lzcapp/pkg/content/lazycat-injects/lzc-file-chooser-inject.js
+
+services:
+  secrets-check:
+    # upstream: docker.io/library/postgres:17.6-alpine
+    image: docker.1ms.run/library/postgres@sha256:747d5ed1fdeeb124b880fbe3d7c6557d2c4064ae41d6b6297d417882effce4be
+    entrypoint: /bin/sh /opt/covan/check-secrets.sh
+    environment:
+      - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
+      - {{ printf "JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - POSTGRES_PASSWORD={{ stable_secret "postgres_password" }}
+      - SECRET_KEY_BASE={{ stable_secret "realtime_secret_key_base" }}
+      - {{ printf "ANON_KEY=%s" .U.anon_key | quote }}
+      - {{ printf "SERVICE_ROLE_KEY=%s" .U.service_role_key | quote }}
+      - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
+    binds:
+      - /lzcapp/pkg/content/secrets-check:/opt/covan:ro
+
+  db:
+    # upstream: docker.io/supabase/postgres:17.6.1.136
+    image: dockerproxy.net/supabase/postgres@sha256:5a4314708484bec672de2c09653a5c01fb1c84a998564ac231b0325e2238ed5b
+    depends_on:
+      - secrets-check
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c log_min_messages=fatal
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+        - postgres
+        - -h
+        - localhost
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - POSTGRES_HOST=/var/run/postgresql
+      - PGPORT=5432
+      - POSTGRES_PORT=5432
+      - POSTGRES_PASSWORD={{ stable_secret "postgres_password" }}
+      - PGPASSWORD={{ stable_secret "postgres_password" }}
+      - PGDATABASE=postgres
+      - POSTGRES_DB=postgres
+      - {{ printf "JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - JWT_EXP=3600
+    binds:
+      - /lzcapp/var/covan/postgres-data:/var/lib/postgresql/data
+      - /lzcapp/var/covan/postgres-config:/etc/postgresql-custom
+      - /lzcapp/pkg/content/db-init:/docker-entrypoint-initdb.d/init-scripts:ro
+
+  auth:
+    # upstream: docker.io/supabase/gotrue:v2.189.0
+    image: docker.1ms.run/supabase/gotrue@sha256:0a8557cbe0fd53a067726fe656f79eb1b03a1ab3cdde4b59907ce5a1e1a202ab
+    depends_on:
+      - db
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --no-verbose
+        - --tries=1
+        - --spider
+        - http://127.0.0.1:9999/health
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - GOTRUE_API_HOST=0.0.0.0
+      - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=https://{{ .S.AppDomain }}/supabase/auth/v1
+      - GOTRUE_DB_DRIVER=postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:{{ stable_secret "postgres_password" }}@db:5432/postgres
+      - GOTRUE_SITE_URL=https://{{ .S.AppDomain }}
+      - GOTRUE_URI_ALLOW_LIST=https://{{ .S.AppDomain }}/*
+      - GOTRUE_DISABLE_SIGNUP={{ .U.disable_signup }}
+      - GOTRUE_JWT_ADMIN_ROLES=service_role
+      - GOTRUE_JWT_AUD=authenticated
+      - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
+      - GOTRUE_JWT_EXP=3600
+      - {{ printf "GOTRUE_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - GOTRUE_JWT_ISSUER=https://{{ .S.AppDomain }}/supabase/auth/v1
+      - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
+      - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
+      - GOTRUE_MAILER_AUTOCONFIRM=true
+      - GOTRUE_EXTERNAL_PHONE_ENABLED=false
+      - GOTRUE_SMS_AUTOCONFIRM=false
+
+  rest:
+    # upstream: docker.io/postgrest/postgrest:v14.12
+    image: docker.1ms.run/postgrest/postgrest@sha256:560895fc1f6cb78f36ae64682c85bfc923c73da2d3a473ae2f55755fd7991ad1
+    depends_on:
+      - db
+    command: postgrest
+    healthcheck:
+      test:
+        - CMD
+        - postgrest
+        - --ready
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - PGRST_DB_URI=postgres://authenticator:{{ stable_secret "postgres_password" }}@db:5432/postgres
+      - PGRST_DB_SCHEMAS=public,graphql_public
+      - PGRST_DB_MAX_ROWS=1000
+      - PGRST_DB_EXTRA_SEARCH_PATH=public,extensions
+      - PGRST_DB_ANON_ROLE=anon
+      - PGRST_ADMIN_SERVER_PORT=3001
+      - PGRST_ADMIN_SERVER_HOST=localhost
+      - {{ printf "PGRST_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - PGRST_DB_USE_LEGACY_GUCS=false
+      - {{ printf "PGRST_APP_SETTINGS_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - PGRST_APP_SETTINGS_JWT_EXP=3600
+
+  realtime-dev:
+    # upstream: docker.io/supabase/realtime:v2.102.3
+    image: docker.1ms.run/supabase/realtime@sha256:2cc87edf0db5cebf1f58c9a4116bb80a25ff764c8706b6802fa68d976e66e5d7
+    depends_on:
+      - db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -sSfL --head -o /dev/null -H "Authorization: Bearer {{ .U.anon_key }}" http://127.0.0.1:4000/api/tenants/realtime-dev/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    environment:
+      - PORT=4000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=supabase_admin
+      - DB_PASSWORD={{ stable_secret "postgres_password" }}
+      - DB_NAME=postgres
+      - DB_AFTER_CONNECT_QUERY=SET search_path TO _realtime
+      - DB_ENC_KEY={{ stable_secret "realtime_db_enc_key" }}
+      - {{ printf "API_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - SECRET_KEY_BASE={{ stable_secret "realtime_secret_key_base" }}
+      - {{ printf "METRICS_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - ERL_AFLAGS=-proto_dist inet_tcp
+      - DNS_NODES=''
+      - RLIMIT_NOFILE=10000
+      - APP_NAME=realtime
+      - SEED_SELF_HOST=true
+      - RUN_JANITOR=true
+      - DISABLE_HEALTHCHECK_LOGGING=true
+
+  kong:
+    # upstream: docker.io/kong/kong:3.9.3
+    image: docker.1ms.run/kong/kong@sha256:61591af560fc9ba4d1e2fcc8be87f28e374c4b2f4a8f0e637702ee12dcaddade
+    depends_on:
+      - auth
+      - rest
+    entrypoint: /bin/sh /opt/covan/kong-entrypoint.sh
+    healthcheck:
+      test:
+        - CMD
+        - kong
+        - health
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/usr/local/kong/kong.yml
+      - KONG_ROUTER_FLAVOR=expressions
+      - KONG_DNS_ORDER=LAST,A,CNAME
+      - KONG_DNS_NOT_FOUND_TTL=1
+      - KONG_DNS_VALID_TTL=5
+      - KONG_PLUGINS=request-transformer,cors,key-auth,acl,request-termination
+      - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
+      - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
+      - {{ printf "SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
+      - {{ printf "SUPABASE_SERVICE_KEY=%s" .U.service_role_key | quote }}
+      - SUPABASE_PUBLISHABLE_KEY=
+      - SUPABASE_SECRET_KEY=
+      - ANON_KEY_ASYMMETRIC=
+      - SERVICE_ROLE_KEY_ASYMMETRIC=
+    binds:
+      - /lzcapp/pkg/content/kong:/opt/covan:ro
+
+  migrate:
+    # upstream: docker.io/library/postgres:17.6-alpine
+    image: docker.1ms.run/library/postgres@sha256:747d5ed1fdeeb124b880fbe3d7c6557d2c4064ae41d6b6297d417882effce4be
+    depends_on:
+      - db
+      - auth
+    entrypoint: /bin/sh /opt/covan/migrate.sh
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD={{ stable_secret "postgres_password" }}
+    binds:
+      - /lzcapp/pkg/content/migrations:/migrations:ro
+      - /lzcapp/pkg/content/migrate:/opt/covan:ro
+
+  covan-api:
+    # upstream: ghcr.io/covan-ai/covan-api:0.1.0
+    image: ghcr.1ms.run/covan-ai/covan-api@sha256:571e83bafa28b54f09c17e2fd388f1322f7df514ee4812d016f1f1f73287e68e
+    run_as: 1000
+    depends_on:
+      - migrate
+      - kong
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --no-verbose
+        - --tries=1
+        - --spider
+        - http://127.0.0.1:8787/health
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      - SUPABASE_URL=http://kong:8000
+      - {{ printf "SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
+      - {{ printf "SUPABASE_SERVICE_ROLE_KEY=%s" .U.service_role_key | quote }}
+      - {{ printf "OPENAI_API_KEY=%s" .U.openai_api_key | quote }}
+      - {{ printf "OPENAI_BASE_URL=%s" .U.openai_base_url | quote }}
+      - {{ printf "OPENAI_MODEL=%s" .U.openai_model | quote }}
+      - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
+      - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
+      - DOCS_DIR=/data/docs
+      - {{ printf "SUPABASE_JWT_SECRET=%s" .U.jwt_secret | quote }}
+      - PORT=8787
+      - ROUTINE_TICK_MS=60000
+    binds:
+      - /lzcapp/var/covan/documents:/data/docs
+
+  covan-web:
+    # upstream: ghcr.io/covan-ai/covan-web:0.1.0
+    image: ghcr.1ms.run/covan-ai/covan-web@sha256:082705ec01022e3da3b3d0f089e343bed4b5cda167771bd020b7c04a360205f3
+    depends_on:
+      - covan-api
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --no-verbose
+        - --tries=1
+        - --spider
+        - http://127.0.0.1:3000/
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - VITE_SUPABASE_URL=https://{{ .S.AppDomain }}/supabase
+      - {{ printf "VITE_SUPABASE_ANON_KEY=%s" .U.anon_key | quote }}
+      - VITE_API_URL=https://{{ .S.AppDomain }}/api
+      - VITE_TERMS_URL=
+      - VITE_PRIVACY_URL=
+
+usage: |
+  Generate a private Supabase JWT secret and matching anon/service-role JWTs before installation. Leave sign-ups enabled, create the first account, then disable new sign-ups if desired. Successful sign-up or sign-in credentials are remembered for passwordless autofill. Uploaded documents are stored in the application's private data directory.

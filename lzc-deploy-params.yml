@@ -1,0 +1,89 @@
+params:
+  - id: openai_api_key
+    type: secret
+    name: OpenAI API Key
+    description: API key used for chat completions, embeddings, and audio transcription
+    optional: false
+
+  - id: jwt_secret
+    type: secret
+    name: Supabase JWT Secret
+    description: A private Supabase JWT signing secret of at least 32 characters; ANON_KEY and SERVICE_ROLE_KEY must be generated from this exact secret
+    optional: false
+
+  - id: anon_key
+    type: secret
+    name: Supabase Anon Key
+    description: The anon JWT generated from the configured Supabase JWT secret
+    optional: false
+
+  - id: service_role_key
+    type: secret
+    name: Supabase Service Role Key
+    description: The service_role JWT generated from the configured Supabase JWT secret; keep this value private
+    optional: false
+
+  - id: openai_base_url
+    type: string
+    name: OpenAI-compatible Base URL
+    description: Optional OpenAI-compatible endpoint for conversations; leave empty to use api.openai.com
+    optional: true
+
+  - id: openai_model
+    type: string
+    name: OpenAI Model
+    description: Optional chat model override; leave empty to use Covan's default
+    optional: true
+
+  - id: disable_signup
+    type: bool
+    name: Disable New Sign-ups
+    description: Disable creation of new Covan accounts; leave disabled until the first team account has been created
+    default_value: "false"
+    optional: true
+
+locales:
+  zh:
+    openai_api_key:
+      name: OpenAI API 密钥
+      description: 用于对话补全、向量嵌入和语音转录的 API 密钥
+    jwt_secret:
+      name: Supabase JWT 密钥
+      description: 至少 32 个字符的私密 JWT 签名密钥；匿名和服务角色 JWT 必须由此密钥生成
+    anon_key:
+      name: Supabase 匿名密钥
+      description: 使用上述 Supabase JWT 密钥生成的 anon JWT
+    service_role_key:
+      name: Supabase 服务角色密钥
+      description: 使用上述 Supabase JWT 密钥生成的 service_role JWT，请严格保密
+    openai_base_url:
+      name: OpenAI 兼容接口地址
+      description: 可选的对话接口地址；留空使用 api.openai.com
+    openai_model:
+      name: OpenAI 模型
+      description: 可选的对话模型覆盖；留空使用 Covan 默认值
+    disable_signup:
+      name: 禁止新用户注册
+      description: 禁止创建新的 Covan 账号；首次创建团队账号前请保持关闭
+  en:
+    openai_api_key:
+      name: OpenAI API Key
+      description: API key used for chat completions, embeddings, and audio transcription
+    jwt_secret:
+      name: Supabase JWT Secret
+      description: Private JWT signing secret of at least 32 characters; both API JWTs must be generated from it
+    anon_key:
+      name: Supabase Anon Key
+      description: Anon JWT generated from the configured JWT secret
+    service_role_key:
+      name: Supabase Service Role Key
+      description: Service-role JWT generated from the configured JWT secret; keep it private
+    openai_base_url:
+      name: OpenAI-compatible Base URL
+      description: Optional conversation endpoint; leave empty to use api.openai.com
+    openai_model:
+      name: OpenAI Model
+      description: Optional chat model override; leave empty to use Covan's default
+    disable_signup:
+      name: Disable New Sign-ups
+      description: Disable new Covan accounts; leave disabled until the first team account exists
