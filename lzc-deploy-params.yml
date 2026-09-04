@@ -8,19 +8,22 @@ params:
   - id: jwt_secret
     type: secret
     name: Supabase JWT Secret
-    description: A private Supabase JWT signing secret of at least 32 characters; ANON_KEY and SERVICE_ROLE_KEY must be generated from this exact secret
+    description: Private signing secret of at least 32 characters; generate the anon and service-role JWTs from this exact secret
+    default_value: "f1e187fd4247f118826c7b25b9d2ebadcf5c84009e93893ba2f5f8cf425479db"
     optional: false
 
   - id: anon_key
     type: secret
     name: Supabase Anon Key
-    description: The anon JWT generated from the configured Supabase JWT secret
+    description: Anon JWT generated from the configured Supabase JWT secret
+    default_value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE3ODg0OTA4MDAsImV4cCI6NDEwMjQ0NDgwMH0.JhYHi-zfRB5F0WhHebEDo6BiArpnwQQvWt6SXmvjIfQ"
     optional: false
 
   - id: service_role_key
     type: secret
     name: Supabase Service Role Key
-    description: The service_role JWT generated from the configured Supabase JWT secret; keep this value private
+    description: Service-role JWT generated from the configured Supabase JWT secret; keep it private
+    default_value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UtZGVtbyIsImlhdCI6MTc4ODg0OTA4MDAsImV4cCI6NDEwMjQ0NDgwMH0.UAPU6RnyKB6Do53TW7LBwqd0LdzWXR4YipwGst8xA58"
     optional: false
 
   - id: openai_base_url
@@ -49,7 +52,7 @@ locales:
       description: 用于对话补全、向量嵌入和语音转录的 API 密钥
     jwt_secret:
       name: Supabase JWT 密钥
-      description: 至少 32 个字符的私密 JWT 签名密钥；匿名和服务角色 JWT 必须由此密钥生成
+      description: 至少 32 个字符的签名密钥；匿名和服务角色 JWT 必须由此密钥生成
     anon_key:
       name: Supabase 匿名密钥
       description: 使用上述 Supabase JWT 密钥生成的 anon JWT
@@ -71,7 +74,7 @@ locales:
       description: API key used for chat completions, embeddings, and audio transcription
     jwt_secret:
       name: Supabase JWT Secret
-      description: Private JWT signing secret of at least 32 characters; both API JWTs must be generated from it
+      description: Signing secret of at least 32 characters; both API JWTs must be generated from it
     anon_key:
       name: Supabase Anon Key
       description: Anon JWT generated from the configured JWT secret

@@ -11,8 +11,7 @@ update:
   strategy: publish
   allow_downgrade: false
   version_source:
-    type: image
-    image: covan-api
+    type: git
 
 build:
   toolchains: []
@@ -23,9 +22,9 @@ images:
     target: service
     service: covan-api
     source: ghcr.io/covan-ai/covan-api
-    channel: stable
+    channel: custom
     sort: semver
-    tag_regex: '^\d+\.\d+\.\d+$'
+    tag_regex: '^0\.1\.0$'
     delivery:
       mode: mirror
       require_digest_match: true
@@ -33,9 +32,19 @@ images:
     target: service
     service: covan-web
     source: ghcr.io/covan-ai/covan-web
-    channel: stable
+    channel: custom
     sort: semver
-    tag_regex: '^\d+\.\d+\.\d+$'
+    tag_regex: '^0\.1\.0$'
+    delivery:
+      mode: mirror
+      require_digest_match: true
+  - id: secrets-check
+    target: service
+    service: secrets-check
+    source: ghcr.io/covan-ai/covan-api
+    channel: custom
+    sort: semver
+    tag_regex: '^0\.1\.0$'
     delivery:
       mode: mirror
       require_digest_match: true

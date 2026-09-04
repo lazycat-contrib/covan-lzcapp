@@ -59,9 +59,9 @@ application:
 
 services:
   secrets-check:
-    # upstream: docker.io/library/postgres:17.6-alpine
-    image: docker.1ms.run/library/postgres@sha256:747d5ed1fdeeb124b880fbe3d7c6557d2c4064ae41d6b6297d417882effce4be
-    entrypoint: /bin/sh /opt/covan/check-secrets.sh
+    # upstream: ghcr.io/covan-ai/covan-api:0.1.0
+    image: ghcr.1ms.run/covan-ai/covan-api@sha256:571e83bafa28b54f09c17e2fd388f1322f7df514ee4812d016f1f1f73287e68e
+    command: bun /lzcapp/pkg/content/secrets-check/validate-secrets.mjs
     environment:
       - ALLOWED_ORIGIN=https://{{ .S.AppDomain }}
       - {{ printf "JWT_SECRET=%s" .U.jwt_secret | quote }}
@@ -70,9 +70,6 @@ services:
       - {{ printf "ANON_KEY=%s" .U.anon_key | quote }}
       - {{ printf "SERVICE_ROLE_KEY=%s" .U.service_role_key | quote }}
       - ROUTINE_SECRET_KEY={{ stable_secret "routine_secret_key" | substr 0 32 | b64enc }}
-    binds:
-      - /lzcapp/pkg/content/secrets-check:/opt/covan:ro
-
   db:
     # upstream: docker.io/supabase/postgres:17.6.1.136
     image: dockerproxy.net/supabase/postgres@sha256:5a4314708484bec672de2c09653a5c01fb1c84a998564ac231b0325e2238ed5b
